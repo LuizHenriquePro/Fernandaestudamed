@@ -7,7 +7,7 @@ import shutil
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
-    page_title=""Estudo CESAP📚",
+    page_title="Estudo CESAP📚",
     page_icon="🌼",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -276,3 +276,4 @@ elif page == "📅 Cronograma":
                 st.session_state['progress']["crono_text"] = crono_data
 
                 save_data(st.session_state['progress'])
+

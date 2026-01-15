@@ -8,7 +8,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
-    page_title="Estudo CESAP Pro 📚",
+    page_title="Estudo CESAP",
     page_icon="🎓",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -123,88 +123,29 @@ SYLLABUS = {
         "17. Ética": ["17.1 Ética e Bioética"],
         "18. Epidemiologia": ["18.1 Fisiopatologia geral"]
     },
-       "Conhecimentos Gerais": {
-    "1. Língua Portuguesa": [
-        "1.1 Compreensão e interpretação de textos de gêneros variados",
-        "1.2 Reconhecimento de tipos e gêneros textuais",
-        "1.3 Domínio da ortografia oficial",
-        "1.4 Mecanismos de coesão textual (referenciação, substituição, conectores)",
-        "1.5 Emprego de tempos e modos verbais",
-        "1.6 Estrutura morfossintática (classes de palavras, coordenação e subordinação)",
-        "1.7 Sinais de pontuação",
-        "1.8 Concordância e Regência (verbal e nominal)",
-        "1.9 Sinal indicativo de crase",
-        "1.10 Colocação pronominal",
-        "1.11 Reescrita de frases e parágrafos (significação, substituição e reorganização)"
-    ],
-    "2. Língua Inglesa": [
-        "2.1 Compreensão de textos (ideias principais, secundárias, explícitas e implícitas)",
-        "2.2 Vocabulário e estrutura da língua",
-        "2.3 Itens gramaticais para compreensão semântica",
-        "2.4 Formas contemporâneas da linguagem inglesa"
-    ],
-    "3. Controle Externo e Legislação Institucional": [
-        "3.1 Conceito, tipos e formas de controle (interno, externo, parlamentar, administrativo)",
-        "3.2 Controle pelos Tribunais de Contas",
-        "3.3 Lei de Improbidade Administrativa (Lei nº 8.429/1992)",
-        "3.4 Sistemas de controle jurisdicional",
-        "3.5 Controle da atividade financeira do Estado",
-        "3.6 Regimento Interno do TCE/RN (Resolução nº 009/2012)",
-        "3.7 Lei Orgânica do TCE/RN (LC nº 464/2012)"
-    ],
-    "4. Competências Digitais e Informática": [
-        "4.1 Cultura, cidadania e letramento digital (BNCC e Lei nº 14.533/2023)",
-        "4.2 Pensamento computacional e ética no uso de dados",
-        "4.3 Windows e Microsoft Office (Word, Excel, PowerPoint)",
-        "4.4 Redes de computadores e protocolos (TCP/IP, HTTP)",
-        "4.5 Ferramentas de colaboração (Teams, Meet, E-mail)",
-        "4.6 Segurança da informação (Backup, vírus, phishing, firewall)",
-        "4.7 LGPD (Lei nº 13.709/2018) e Marco Civil da Internet",
-        "4.8 Governo Digital (Gov.br, Portal de Dados Abertos, LAI)",
-        "4.9 Sistemas do setor público (PEN, SEI, Assinatura Digital)",
-        "4.10 Tecnologias emergentes (IA generativa, Big Data, IoT)",
-        "4.11 Acessibilidade e combate a fake news"
-    ],
-    "5. Raciocínio Lógico": [
-        "5.1 Estruturas lógicas e lógica de argumentação",
-        "5.2 Lógica sentencial (Proposições, Tabelas-verdade, Equivalências)",
-        "5.3 Leis de De Morgan e Diagramas lógicos",
-        "5.4 Lógica de primeira ordem",
-        "5.5 Princípios de contagem e probabilidade",
-        "5.6 Operações com conjuntos",
-        "5.7 Problemas aritméticos, geométricos e matriciais"
-    ],
-    "6. Noções de Direito Constitucional": [
-        "6.1 Aplicabilidade das normas constitucionais (Eficácia e normas programáticas)",
-        "6.2 Direitos e garantias fundamentais",
-        "6.3 Organização político-administrativa do Estado",
-        "6.4 Poder Executivo, Legislativo e Judiciário",
-        "6.5 Fiscalização contábil, financeira e orçamentária",
-        "6.6 Funções essenciais à justiça"
-    ],
-    "7. Noções de Direito Administrativo": [
-        "7.1 Organização administrativa (Direta, Indireta, Descentralização)",
-        "7.2 Atos administrativos (Conceito, requisitos e atributos)",
-        "7.3 Agentes públicos e disposições constitucionais",
-        "7.4 Poderes administrativos e uso/abuso de poder",
-        "7.5 Licitação (Lei Geral, modalidades e contratação direta)",
-        "7.6 Controle da administração pública",
-        "7.7 Responsabilidade civil do Estado"
-    ],
-    "8. Administração Financeira e Orçamentária (AFO)": [
-        "8.1 Orçamento Público (Conceito, técnicas e princípios)",
-        "8.2 Ciclo e Processo orçamentário",
-        "8.3 Instrumentos de planejamento (PPA, LDO, LOA)",
-        "8.4 Classificações orçamentárias e Créditos adicionais",
-        "8.5 Programação e execução financeira",
-        "8.6 Receita e Despesa Pública (Conceitos, estágios e restos a pagar)",
-        "8.7 Lei de Responsabilidade Fiscal (LC nº 101/2000)",
-        "8.8 Lei nº 4.320/1964"]
+    "Conhecimentos Gerais": {
+        "1. Língua Portuguesa": ["1.1 Interpretação", "1.2 Tipos textuais", "1.3 Ortografia", "1.4 Coesão", 
+                                 "1.5 Tempos verbais", "1.6 Morfossintaxe", "1.7 Pontuação", "1.8 Concordância",
+                                 "1.9 Crase", "1.10 Pronomes", "1.11 Reescrita"],
+        "2. Língua Inglesa": ["2.1 Compreensão textos", "2.2 Vocabulário", "2.3 Gramática semântica", "2.4 Inglês contemporâneo"],
+        "3. Controle Externo": ["3.1 Tipos de controle", "3.2 Tribunais de Contas", "3.3 Improbidade (8.429)",
+                                "3.4 Controle jurisdicional", "3.5 Controle financeiro", "3.6 Regimento TCE/RN", "3.7 Lei Orgânica TCE/RN"],
+        "4. Informática": ["4.1 Cultura digital/BNCC", "4.2 Pensamento computacional", "4.3 Office", "4.4 Redes/Protocolos",
+                           "4.5 Colaboração", "4.6 Segurança", "4.7 LGPD", "4.8 Gov Digital", "4.9 Sistemas públicos",
+                           "4.10 IA/Big Data", "4.11 Fake news"],
+        "5. Raciocínio Lógico": ["5.1 Estruturas lógicas", "5.2 Proposições", "5.3 De Morgan", "5.4 Lógica 1ª ordem",
+                                 "5.5 Contagem/Probabilidade", "5.6 Conjuntos", "5.7 Problemas matriciais"],
+        "6. Constitucional": ["6.1 Normas constitucionais", "6.2 Direitos fundamentais", "6.3 Organização do Estado",
+                              "6.4 Poderes", "6.5 Fiscalização", "6.6 Funções essenciais"],
+        "7. Administrativo": ["7.1 Organização adm.", "7.2 Atos adm.", "7.3 Agentes públicos", "7.4 Poderes",
+                              "7.5 Licitação", "7.6 Controle", "7.7 Resp. Civil"],
+        "8. AFO": ["8.1 Orçamento Público", "8.2 Ciclo orçamentário", "8.3 PPA/LDO/LOA", "8.4 Classificações",
+                   "8.5 Execução financeira", "8.6 Receita/Despesa", "8.7 LRF", "8.8 Lei 4.320"]
     }
 }
 
 # --- INTERFACE ---
-st.title("👩‍⚕️ Planner CESAP Pro (Cloud)")
+st.title("👩‍⚕️ Planner CESAP")
 st.markdown("---")
 
 if SHEET is None:
@@ -369,22 +310,38 @@ if page == "📊 Dashboard Analytics":
                 for item in faltando: st.write(f"⏳ {item}")
 
     with tab2:
-        if revisao_items: st.table(pd.DataFrame(revisao_items))
-        else: st.info("✅ Nenhuma revisão pendente.")
+        if revisao_items:
+            st.table(pd.DataFrame(revisao_items))
+        else:
+            st.info("✅ Nenhuma revisão urgente pendente para hoje.")
+
+        # --- EXPLICAÇÃO DA REVISÃO INTELIGENTE ---
+        st.markdown("---")
+        with st.container():
+            st.markdown("### 🧠 Como funciona a Revisão Inteligente?")
+            st.markdown("""
+            Este sistema utiliza o conceito de **Repetição Espaçada** (Spaced Repetition) para combater a curva do esquecimento.
+            
+            O sistema monitora quando você estudou cada tópico pela última vez e sugere revisões nos seguintes intervalos críticos:
+            *   **📅 1 Dia (24h):** Fixação imediata (evita perda de ~50% do conteúdo).
+            *   **📅 7 Dias:** Reforço das conexões neurais.
+            *   **📅 30 Dias:** Consolidação na memória de longo prazo.
+            
+            *Dica: Sempre que você revisar um tópico, interaja com ele na lista (marcando/desmarcando ou editando notas) para que o sistema atualize a data e reinicie o ciclo.*
+            """)
 
     with tab3:
         if chart_data:
             df_chart = pd.DataFrame(chart_data)
             st.bar_chart(df_chart.set_index("Matéria"))
 
-# --- EDITAL VERTICALIZADO (COM DETALHES DE VOLTA!) ---
+# --- EDITAL VERTICALIZADO ---
 elif page == "📝 Edital Vertical":
     st.header("📝 Edital Verticalizado")
     mat_escolhida = st.selectbox("Escolha a Matéria:", list(SYLLABUS.keys()))
 
     for topico, subtopicos in SYLLABUS[mat_escolhida].items():
         with st.expander(f"📁 {topico}"):
-            # Colunas ajustadas para caber a engrenagem no final
             h_cols = st.columns([2.5, 0.5, 0.5, 0.5, 0.8, 0.5])
             h_cols[0].markdown("**Subtópico**")
             h_cols[1].markdown("**📖**")
@@ -401,26 +358,20 @@ elif page == "📝 Edital Vertical":
                 sub_icon = "✅" if status.get("teoria") and status.get("questoes") and status.get("revisao") else "🔹"
                 cols[0].write(f"{sub_icon} {s}")
 
-                # Checkboxes básicos
                 t = cols[1].checkbox("T", value=status.get("teoria", False), key=f"t{key}", label_visibility="collapsed")
                 q = cols[2].checkbox("Q", value=status.get("questoes", False), key=f"q{key}", label_visibility="collapsed")
                 r = cols[3].checkbox("R", value=status.get("revisao", False), key=f"r{key}", label_visibility="collapsed")
                 n_q = cols[4].number_input("Nº", min_value=0, step=1, value=status.get("num_questoes", 0), key=f"nq{key}", label_visibility="collapsed")
 
-                # --- AQUI ESTÁ A ENGRENAGEM DE VOLTA ---
                 with cols[5].popover("⚙️"):
-                    # Dificuldade
                     options_diff = ["Não avaliado", "🟢 Fácil", "🟡 Médio", "🔴 Difícil"]
                     curr_diff = status.get("dificuldade", "Não avaliado")
                     idx_diff = options_diff.index(curr_diff) if curr_diff in options_diff else 0
                     
                     new_diff = st.selectbox("Dificuldade:", options_diff, index=idx_diff, key=f"diff_{key}")
-                    
-                    # Notas
                     st.markdown("**📝 Notas:**")
                     new_note = st.text_area("Anotações", value=status.get("notes", ""), key=f"note_{key}", height=100)
 
-                # Verifica se QUALQUER coisa mudou (Checks, Numeros, Dificuldade ou Notas)
                 current_state = (
                     status.get("teoria"), status.get("questoes"), status.get("revisao"), 
                     status.get("num_questoes"), status.get("dificuldade"), status.get("notes")
@@ -429,12 +380,8 @@ elif page == "📝 Edital Vertical":
 
                 if current_state != new_state:
                     st.session_state['progress'][key] = {
-                        "teoria": t, 
-                        "questoes": q, 
-                        "revisao": r, 
-                        "num_questoes": n_q,
-                        "dificuldade": new_diff,
-                        "notes": new_note,
+                        "teoria": t, "questoes": q, "revisao": r, "num_questoes": n_q,
+                        "dificuldade": new_diff, "notes": new_note,
                         "last_modified": datetime.now().isoformat()
                     }
                     save_data(st.session_state['progress'])

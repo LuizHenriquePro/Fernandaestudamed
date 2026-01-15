@@ -130,14 +130,82 @@ SYLLABUS = {
         "18. Epidemiologia": ["18.1 Fisiopatologia geral"]
     },
     "Conhecimentos Gerais": {
-        "Língua Portuguesa": ["Interpretação de textos", "Tipos e gêneros", "Ortografia", "Coesão/Tempos verbais",
-                              "Sintaxe/Pontuação/Crase", "Reescrita"],
-        "Inglês": ["Compreensão de textos", "Gramática"],
-        "Legislação": ["Controle Externo", "Legislação Institucional"],
-        "Informática": ["Setor Público", "Segurança/LGPD", "Gov Digital"],
-        "Raciocínio Lógico": ["Proposicional e analítica"],
-        "Direito": ["Constitucional", "Administrativo"],
-        "AFO": ["Administração Financeira e Orçamentária"]
+    "1. Língua Portuguesa": [
+        "1.1 Compreensão e interpretação de textos de gêneros variados",
+        "1.2 Reconhecimento de tipos e gêneros textuais",
+        "1.3 Domínio da ortografia oficial",
+        "1.4 Mecanismos de coesão textual (referenciação, substituição, conectores)",
+        "1.5 Emprego de tempos e modos verbais",
+        "1.6 Estrutura morfossintática (classes de palavras, coordenação e subordinação)",
+        "1.7 Sinais de pontuação",
+        "1.8 Concordância e Regência (verbal e nominal)",
+        "1.9 Sinal indicativo de crase",
+        "1.10 Colocação pronominal",
+        "1.11 Reescrita de frases e parágrafos (significação, substituição e reorganização)"
+    ],
+    "2. Língua Inglesa": [
+        "2.1 Compreensão de textos (ideias principais, secundárias, explícitas e implícitas)",
+        "2.2 Vocabulário e estrutura da língua",
+        "2.3 Itens gramaticais para compreensão semântica",
+        "2.4 Formas contemporâneas da linguagem inglesa"
+    ],
+    "3. Controle Externo e Legislação Institucional": [
+        "3.1 Conceito, tipos e formas de controle (interno, externo, parlamentar, administrativo)",
+        "3.2 Controle pelos Tribunais de Contas",
+        "3.3 Lei de Improbidade Administrativa (Lei nº 8.429/1992)",
+        "3.4 Sistemas de controle jurisdicional",
+        "3.5 Controle da atividade financeira do Estado",
+        "3.6 Regimento Interno do TCE/RN (Resolução nº 009/2012)",
+        "3.7 Lei Orgânica do TCE/RN (LC nº 464/2012)"
+    ],
+    "4. Competências Digitais e Informática": [
+        "4.1 Cultura, cidadania e letramento digital (BNCC e Lei nº 14.533/2023)",
+        "4.2 Pensamento computacional e ética no uso de dados",
+        "4.3 Windows e Microsoft Office (Word, Excel, PowerPoint)",
+        "4.4 Redes de computadores e protocolos (TCP/IP, HTTP)",
+        "4.5 Ferramentas de colaboração (Teams, Meet, E-mail)",
+        "4.6 Segurança da informação (Backup, vírus, phishing, firewall)",
+        "4.7 LGPD (Lei nº 13.709/2018) e Marco Civil da Internet",
+        "4.8 Governo Digital (Gov.br, Portal de Dados Abertos, LAI)",
+        "4.9 Sistemas do setor público (PEN, SEI, Assinatura Digital)",
+        "4.10 Tecnologias emergentes (IA generativa, Big Data, IoT)",
+        "4.11 Acessibilidade e combate a fake news"
+    ],
+    "5. Raciocínio Lógico": [
+        "5.1 Estruturas lógicas e lógica de argumentação",
+        "5.2 Lógica sentencial (Proposições, Tabelas-verdade, Equivalências)",
+        "5.3 Leis de De Morgan e Diagramas lógicos",
+        "5.4 Lógica de primeira ordem",
+        "5.5 Princípios de contagem e probabilidade",
+        "5.6 Operações com conjuntos",
+        "5.7 Problemas aritméticos, geométricos e matriciais"
+    ],
+    "6. Noções de Direito Constitucional": [
+        "6.1 Aplicabilidade das normas constitucionais (Eficácia e normas programáticas)",
+        "6.2 Direitos e garantias fundamentais",
+        "6.3 Organização político-administrativa do Estado",
+        "6.4 Poder Executivo, Legislativo e Judiciário",
+        "6.5 Fiscalização contábil, financeira e orçamentária",
+        "6.6 Funções essenciais à justiça"
+    ],
+    "7. Noções de Direito Administrativo": [
+        "7.1 Organização administrativa (Direta, Indireta, Descentralização)",
+        "7.2 Atos administrativos (Conceito, requisitos e atributos)",
+        "7.3 Agentes públicos e disposições constitucionais",
+        "7.4 Poderes administrativos e uso/abuso de poder",
+        "7.5 Licitação (Lei Geral, modalidades e contratação direta)",
+        "7.6 Controle da administração pública",
+        "7.7 Responsabilidade civil do Estado"
+    ],
+    "8. Administração Financeira e Orçamentária (AFO)": [
+        "8.1 Orçamento Público (Conceito, técnicas e princípios)",
+        "8.2 Ciclo e Processo orçamentário",
+        "8.3 Instrumentos de planejamento (PPA, LDO, LOA)",
+        "8.4 Classificações orçamentárias e Créditos adicionais",
+        "8.5 Programação e execução financeira",
+        "8.6 Receita e Despesa Pública (Conceitos, estágios e restos a pagar)",
+        "8.7 Lei de Responsabilidade Fiscal (LC nº 101/2000)",
+        "8.8 Lei nº 4.320/1964"]
     }
 }
 
@@ -363,3 +431,4 @@ elif page == "📅 Cronograma":
                 crono_data[d] = txt
                 st.session_state['progress']["crono_text"] = crono_data
                 save_data(st.session_state['progress'])
+

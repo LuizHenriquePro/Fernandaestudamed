@@ -15,16 +15,10 @@ st.set_page_config(
 )
 
 # --- AUTENTICAÇÃO GOOGLE SHEETS ---
-# Certifique-se de que suas secrets estão configuradas corretamente no Streamlit Cloud ou localmente
-try:
     SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     CREDS = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets["gcp_service_account"], SCOPE)
     GS_CLIENT = gspread.authorize(CREDS)
     SHEET = GS_CLIENT.open("EstudaMed").sheet1  # Nome da planilha
-except Exception as e:
-    st.error(f"Erro na conexão com Google Sheets: {e}")
-    st.stop()
-
 # --- FUNÇÕES DE SISTEMA ---
 def load_data():
     try:
@@ -432,3 +426,4 @@ elif page == "📅 Cronograma":
                 crono_data[d] = txt
                 st.session_state['progress']["crono_text"] = crono_data
                 save_data(st.session_state['progress'])
+

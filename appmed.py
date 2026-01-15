@@ -18,7 +18,6 @@ st.set_page_config(
 @st.cache_resource
 def connect_to_gsheets():
     try:
-        # Tenta pegar as credenciais dos Secrets
         if "gcp_service_account" not in st.secrets:
             st.error("⚠️ Secrets não configurados! Vá nas configurações do App no Streamlit Cloud.")
             return None
@@ -27,14 +26,10 @@ def connect_to_gsheets():
         creds = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets["gcp_service_account"], scope)
         client = gspread.authorize(creds)
         
-        # --- AQUI ESTÁ A CORREÇÃO DEFINITIVA ---
-        # Substitua o ID abaixo pelo ID da sua planilha (aquela parte estranha na URL)
-        # Ex: docs.google.com/spreadsheets/d/1BxiM-u...L3t8/edit
-        # Cole apenas o código entre as barras:
+        # --- ID DA PLANILHA ---
+        # Cole o ID da sua planilha aqui (aquela parte entre as barras na URL)
+        SPREADSHEET_ID = "1BxiM-uQ2j3k4l5m6n7o8p9q0r1s2t3u4v5w6x7y8z" # <--- TROQUE ISSO PELO SEU ID REAL
         
-        SPREADSHEET_ID = "1KpueCtPbJs0p4KeAwiihCkHN2wzQPCx0xB-LP0-V93Y" # <--- TROQUE ISSO PELO SEU ID REAL
-        
-        # Se você não trocar o ID acima, ele tentará abrir pelo nome (que deu erro antes)
         try:
              return client.open_by_key(SPREADSHEET_ID).sheet1
         except:
@@ -44,7 +39,6 @@ def connect_to_gsheets():
         st.error(f"Erro na conexão: {e}")
         return None
 
-# Carrega a planilha
 SHEET = connect_to_gsheets()
 
 # --- FUNÇÕES DE SISTEMA ---
@@ -61,7 +55,7 @@ def save_data(data):
     try:
         SHEET.update('A1', [[json.dumps(data, ensure_ascii=False)]])
     except Exception as e:
-        st.warning(f"Salvando... (Se demorar, é normal do Google)")
+        st.warning(f"Salvando alterações... (Google Sheets)")
 
 def save_pomodoro_session(minutes):
     if 'progress' not in st.session_state: st.session_state['progress'] = {}
@@ -129,7 +123,7 @@ SYLLABUS = {
         "17. Ética": ["17.1 Ética e Bioética"],
         "18. Epidemiologia": ["18.1 Fisiopatologia geral"]
     },
-    "Conhecimentos Gerais": {
+       "Conhecimentos Gerais": {
     "1. Língua Portuguesa": [
         "1.1 Compreensão e interpretação de textos de gêneros variados",
         "1.2 Reconhecimento de tipos e gêneros textuais",
@@ -221,7 +215,7 @@ with st.sidebar:
     page = st.radio("Selecione:", ["📊 Dashboard Analytics", "📝 Edital Vertical", "📅 Cronograma"])
     st.markdown("---")
 
-    # --- POMODORO TIMER APERFEIÇOADO ---
+    # --- POMODORO TIMER ---
     st.subheader("🍅 Pomodoro Timer")
     
     if 'pomo_running' not in st.session_state:
@@ -383,36 +377,64 @@ if page == "📊 Dashboard Analytics":
             df_chart = pd.DataFrame(chart_data)
             st.bar_chart(df_chart.set_index("Matéria"))
 
-# --- EDITAL VERTICALIZADO ---
+# --- EDITAL VERTICALIZADO (COM DETALHES DE VOLTA!) ---
 elif page == "📝 Edital Vertical":
     st.header("📝 Edital Verticalizado")
     mat_escolhida = st.selectbox("Escolha a Matéria:", list(SYLLABUS.keys()))
 
     for topico, subtopicos in SYLLABUS[mat_escolhida].items():
         with st.expander(f"📁 {topico}"):
-            h_cols = st.columns([2.5, 0.8, 0.8, 0.8, 1.2])
+            # Colunas ajustadas para caber a engrenagem no final
+            h_cols = st.columns([2.5, 0.5, 0.5, 0.5, 0.8, 0.5])
             h_cols[0].markdown("**Subtópico**")
-            h_cols[1].markdown("**📖 T**")
-            h_cols[2].markdown("**✍️ Q**")
-            h_cols[3].markdown("**🔄 R**")
+            h_cols[1].markdown("**📖**")
+            h_cols[2].markdown("**✍️**")
+            h_cols[3].markdown("**🔄**")
             h_cols[4].markdown("**Qtd.**")
+            h_cols[5].markdown("**Det.**")
 
             for s in subtopicos:
                 key = f"{mat_escolhida}-{topico}-{s}"
                 status = st.session_state['progress'].get(key, {})
-                cols = st.columns([2.5, 0.8, 0.8, 0.8, 1.2])
+                cols = st.columns([2.5, 0.5, 0.5, 0.5, 0.8, 0.5])
                 
                 sub_icon = "✅" if status.get("teoria") and status.get("questoes") and status.get("revisao") else "🔹"
                 cols[0].write(f"{sub_icon} {s}")
 
+                # Checkboxes básicos
                 t = cols[1].checkbox("T", value=status.get("teoria", False), key=f"t{key}", label_visibility="collapsed")
                 q = cols[2].checkbox("Q", value=status.get("questoes", False), key=f"q{key}", label_visibility="collapsed")
                 r = cols[3].checkbox("R", value=status.get("revisao", False), key=f"r{key}", label_visibility="collapsed")
                 n_q = cols[4].number_input("Nº", min_value=0, step=1, value=status.get("num_questoes", 0), key=f"nq{key}", label_visibility="collapsed")
 
-                if (t, q, r, n_q) != (status.get("teoria"), status.get("questoes"), status.get("revisao"), status.get("num_questoes")):
+                # --- AQUI ESTÁ A ENGRENAGEM DE VOLTA ---
+                with cols[5].popover("⚙️"):
+                    # Dificuldade
+                    options_diff = ["Não avaliado", "🟢 Fácil", "🟡 Médio", "🔴 Difícil"]
+                    curr_diff = status.get("dificuldade", "Não avaliado")
+                    idx_diff = options_diff.index(curr_diff) if curr_diff in options_diff else 0
+                    
+                    new_diff = st.selectbox("Dificuldade:", options_diff, index=idx_diff, key=f"diff_{key}")
+                    
+                    # Notas
+                    st.markdown("**📝 Notas:**")
+                    new_note = st.text_area("Anotações", value=status.get("notes", ""), key=f"note_{key}", height=100)
+
+                # Verifica se QUALQUER coisa mudou (Checks, Numeros, Dificuldade ou Notas)
+                current_state = (
+                    status.get("teoria"), status.get("questoes"), status.get("revisao"), 
+                    status.get("num_questoes"), status.get("dificuldade"), status.get("notes")
+                )
+                new_state = (t, q, r, n_q, new_diff, new_note)
+
+                if current_state != new_state:
                     st.session_state['progress'][key] = {
-                        "teoria": t, "questoes": q, "revisao": r, "num_questoes": n_q,
+                        "teoria": t, 
+                        "questoes": q, 
+                        "revisao": r, 
+                        "num_questoes": n_q,
+                        "dificuldade": new_diff,
+                        "notes": new_note,
                         "last_modified": datetime.now().isoformat()
                     }
                     save_data(st.session_state['progress'])
@@ -423,6 +445,7 @@ elif page == "📅 Cronograma":
     st.header("📅 Planejamento Semanal")
     days = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
     crono_data = st.session_state['progress'].get("crono_text", {d: "" for d in days})
+    
     c1, c2 = st.columns(2)
     for i, d in enumerate(days):
         with (c1 if i % 2 == 0 else c2):
@@ -431,4 +454,3 @@ elif page == "📅 Cronograma":
                 crono_data[d] = txt
                 st.session_state['progress']["crono_text"] = crono_data
                 save_data(st.session_state['progress'])
-

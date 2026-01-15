@@ -7,8 +7,8 @@ import shutil
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
-    page_title="EstudaMed - Planner",
-    page_icon="📚",
+    page_title=""Estudo CESAP📚",",
+    page_icon="🌼",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -94,11 +94,11 @@ if 'progress' not in st.session_state:
 
 # --- INTERFACE ---
 
-st.title("👩‍⚕️ EstudaMed - Planner Profissional")
+st.title("👩‍⚕️ Planner CESAP ")
 st.markdown("---")
 
 with st.sidebar:
-    st.header("📍 Menu")
+    st.header("🌼 Menu")
     page = st.radio("Selecione:", ["📊 Dashboard", "📝 Edital Vertical", "📅 Cronograma"])
     st.markdown("---")
 
@@ -274,4 +274,5 @@ elif page == "📅 Cronograma":
             if txt != crono_data.get(d):
                 crono_data[d] = txt
                 st.session_state['progress']["crono_text"] = crono_data
+
                 save_data(st.session_state['progress'])

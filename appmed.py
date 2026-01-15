@@ -1,9 +1,9 @@
 import streamlit as st
 import json
-import os
 import pandas as pd
 import plotly.express as px
-import shutil
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
@@ -13,9 +13,30 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- ARQUIVOS DE DADOS ---
-DATA_FILE = "meu_progresso.json"
-BACKUP_FILE = "meu_progresso_backup.json"
+# --- AUTENTICAÇÃO GOOGLE SHEETS ---
+SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+CREDS = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets["gcp_service_account"], SCOPE)
+GS_CLIENT = gspread.authorize(CREDS)
+SHEET = GS_CLIENT.open("EstudaMed").sheet1  # Nome da planilha
+
+# --- FUNÇÕES DE PERSISTÊNCIA ---
+def load_data():
+    try:
+        val = SHEET.cell(1, 1).value
+        return json.loads(val) if val else {}
+    except Exception as e:
+        st.warning(f"Erro ao carregar dados: {e}")
+        return {}
+
+def save_data(data):
+    try:
+        SHEET.update('A1', [[json.dumps(data, ensure_ascii=False)]])
+    except Exception as e:
+        st.error(f"Erro ao salvar dados: {e}")
+
+# Inicializa o estado global
+if 'progress' not in st.session_state:
+    st.session_state['progress'] = load_data()
 
 # --- DADOS DO EDITAL ---
 SYLLABUS = {
@@ -67,33 +88,7 @@ SYLLABUS = {
     }
 }
 
-
-# --- FUNÇÕES DE PERSISTÊNCIA ---
-def load_data():
-    if os.path.exists(DATA_FILE):
-        try:
-            with open(DATA_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except:
-            if os.path.exists(BACKUP_FILE):
-                with open(BACKUP_FILE, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-            return {}
-    return {}
-
-
-def save_data(data):
-    with open(DATA_FILE, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
-    shutil.copy2(DATA_FILE, BACKUP_FILE)
-
-
-# Inicializa o estado global
-if 'progress' not in st.session_state:
-    st.session_state['progress'] = load_data()
-
 # --- INTERFACE ---
-
 st.title("👩‍⚕️ Planner CESAP ")
 st.markdown("---")
 
@@ -101,8 +96,7 @@ with st.sidebar:
     st.header("🌼 Menu")
     page = st.radio("Selecione:", ["📊 Dashboard", "📝 Edital Vertical", "📅 Cronograma"])
     st.markdown("---")
-
-    st.info("💡 Seus dados são salvos automaticamente.")
+    st.info("💡 Seus dados são salvos automaticamente no Google Sheets.")
 
     if st.button("🗑️ Limpar Tudo (CUIDADO)"):
         if st.checkbox("Confirmar exclusão definitiva?"):
@@ -118,13 +112,11 @@ if page == "📊 Dashboard":
     total_topics = 0
     done_teoria = 0
     total_questoes_resolvidas = 0
-    topics_com_questoes = 0
 
     finalizadas = []
     em_andamento = []
     faltando = []
 
-    # Processamento para estatísticas
     for mat_cat, topicos in SYLLABUS.items():
         for nome_topico, subtopicos in topicos.items():
             total_sub = len(subtopicos)
@@ -135,32 +127,22 @@ if page == "📊 Dashboard":
                 key = f"{mat_cat}-{nome_topico}-{s}"
                 st_data = st.session_state['progress'].get(key, {})
 
-                # Critério de conclusão: Teoria + Questões + Revisão marcados
                 if st_data.get("teoria") and st_data.get("questoes") and st_data.get("revisao"):
                     cont_sub_concluido += 1
-
                 if st_data.get("teoria"):
                     done_teoria += 1
-
-                n_questoes = st_data.get("num_questoes", 0)
-                total_questoes_resolvidas += n_questoes
-
-                if st_data.get("questoes") or n_questoes > 0:
-                    topics_com_questoes += 1
+                total_questoes_resolvidas += st_data.get("num_questoes", 0)
 
             label = f"{nome_topico} ({mat_cat})"
             if cont_sub_concluido == total_sub:
                 finalizadas.append(label)
-            elif cont_sub_concluido > 0 or any(
-                    st.session_state['progress'].get(f"{mat_cat}-{nome_topico}-{s}", {}).get("teoria") for s in
-                    subtopicos):
-                em_andamento.append(f"{label} - {cont_sub_concluido}/{total_sub} 100%")
+            elif cont_sub_concluido > 0:
+                em_andamento.append(f"{label} - {cont_sub_concluido}/{total_sub}")
             else:
                 faltando.append(label)
 
     perc_teoria = (done_teoria / total_topics * 100) if total_topics > 0 else 0
 
-    # Cartões de Métricas
     c1, c2, c3 = st.columns(3)
     c1.metric("📌 Progresso Teoria", f"{perc_teoria:.1f}%")
     c2.metric("📖 Tópicos Lidos", f"{done_teoria}/{total_topics}")
@@ -170,23 +152,16 @@ if page == "📊 Dashboard":
 
     st.markdown("---")
     st.subheader("📋 Situação das Disciplinas")
-
     col1, col2, col3 = st.columns(3)
-
     with col1:
         st.success(f"**Concluídas ({len(finalizadas)})**")
         for item in finalizadas: st.write(f"✅ {item}")
-        if not finalizadas: st.caption("Nenhuma completa.")
-
     with col2:
         st.warning(f"**Iniciadas ({len(em_andamento)})**")
         for item in em_andamento: st.write(f"🚧 {item}")
-        if not em_andamento: st.caption("Nenhuma iniciada.")
-
     with col3:
         st.error(f"**Não Tocadas ({len(faltando)})**")
         for item in faltando: st.write(f"⏳ {item}")
-        if not faltando: st.caption("Todas iniciadas!")
 
 # --- EDITAL VERTICALIZADO ---
 elif page == "📝 Edital Vertical":
@@ -194,32 +169,7 @@ elif page == "📝 Edital Vertical":
     mat_escolhida = st.selectbox("Escolha a Matéria:", list(SYLLABUS.keys()))
 
     for topico, subtopicos in SYLLABUS[mat_escolhida].items():
-        sub_count = len(subtopicos)
-        done_t_total = 0
-        done_q_total = 0
-        done_r_total = 0
-        q_num_total = 0
-
-        # Checagem de progresso do grupo para o título do expander
-        for s in subtopicos:
-            key_check = f"{mat_escolhida}-{topico}-{s}"
-            prog = st.session_state['progress'].get(key_check, {})
-            if prog.get("teoria"): done_t_total += 1
-            if prog.get("questoes"): done_q_total += 1
-            if prog.get("revisao"): done_r_total += 1
-            q_num_total += prog.get("num_questoes", 0)
-
-        # Ícones Dinâmicos para o Grupo
-        header_icons = ""
-        if done_t_total == sub_count: header_icons += " 📖"
-        if done_q_total == sub_count: header_icons += " ✍️"
-        if done_r_total == sub_count: header_icons += " 🔄"
-
-        # Se tudo estiver completo, substitui por um check único
-        if done_t_total == sub_count and done_q_total == sub_count and done_r_total == sub_count:
-            header_icons = " ✅"
-
-        with st.expander(f"📁 {topico}{header_icons} (Total Q: {q_num_total})"):
+        with st.expander(f"📁 {topico}"):
             h_cols = st.columns([2.5, 0.8, 0.8, 0.8, 1.2])
             h_cols[0].markdown("**Subtópico**")
             h_cols[1].markdown("**📖 Teoria**")
@@ -230,33 +180,15 @@ elif page == "📝 Edital Vertical":
             for s in subtopicos:
                 key = f"{mat_escolhida}-{topico}-{s}"
                 status = st.session_state['progress'].get(key, {})
-
                 cols = st.columns([2.5, 0.8, 0.8, 0.8, 1.2])
-
-                # Definir ícone individual do subtópico baseado no status
-                sub_icon = "🔹"
-                if status.get("teoria") and status.get("questoes") and status.get("revisao"):
-                    sub_icon = "✅"
-                elif status.get("teoria"):
-                    sub_icon = "📖"
-
+                sub_icon = "✅" if status.get("teoria") and status.get("questoes") and status.get("revisao") else "🔹"
                 cols[0].write(f"{sub_icon} {s}")
+                t = cols[1].checkbox("T", value=status.get("teoria", False), key=f"t{key}", label_visibility="collapsed")
+                q = cols[2].checkbox("Q", value=status.get("questoes", False), key=f"q{key}", label_visibility="collapsed")
+                r = cols[3].checkbox("R", value=status.get("revisao", False), key=f"r{key}", label_visibility="collapsed")
+                n_q = cols[4].number_input("Nº", min_value=0, step=1, value=status.get("num_questoes", 0), key=f"nq{key}", label_visibility="collapsed")
 
-                # Checkboxes
-                t = cols[1].checkbox("T", value=status.get("teoria", False), key=f"t{key}",
-                                     label_visibility="collapsed")
-                q = cols[2].checkbox("Q", value=status.get("questoes", False), key=f"q{key}",
-                                     label_visibility="collapsed")
-                r = cols[3].checkbox("R", value=status.get("revisao", False), key=f"r{key}",
-                                     label_visibility="collapsed")
-
-                # Input de número de questões
-                n_q = cols[4].number_input("Nº", min_value=0, step=1, value=status.get("num_questoes", 0),
-                                           key=f"nq{key}", label_visibility="collapsed")
-
-                # Salvar alterações
-                if (t, q, r, n_q) != (status.get("teoria"), status.get("questoes"), status.get("revisao"),
-                                      status.get("num_questoes")):
+                if (t, q, r, n_q) != (status.get("teoria"), status.get("questoes"), status.get("revisao"), status.get("num_questoes")):
                     st.session_state['progress'][key] = {"teoria": t, "questoes": q, "revisao": r, "num_questoes": n_q}
                     save_data(st.session_state['progress'])
                     st.rerun()
@@ -274,6 +206,4 @@ elif page == "📅 Cronograma":
             if txt != crono_data.get(d):
                 crono_data[d] = txt
                 st.session_state['progress']["crono_text"] = crono_data
-
                 save_data(st.session_state['progress'])
-

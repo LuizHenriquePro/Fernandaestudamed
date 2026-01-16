@@ -213,20 +213,6 @@ if SHEET is None:
 
 with st.sidebar:
     st.header("🌼 Menu")
-    
-    # Aviso de primeira carga
-    if 'first_load' not in st.session_state:
-        st.session_state['first_load'] = True
-        st.info("""
-        💡 **Dica de Uso do Pomodoro:**
-        - Inicie o timer
-        - Minimize esta janela (não feche!)
-        - Continue escrevendo/estudando
-        - Uma notificação vai aparecer quando terminar!
-        
-        ⚠️ Não feche o navegador, apenas minimize.
-        """)
-    
     page = st.radio("Selecione:", ["📊 Dashboard Analytics", "📝 Edital Vertical", "📅 Cronograma"])
     st.markdown("---")
 

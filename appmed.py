@@ -240,8 +240,17 @@ with st.sidebar:
             st.session_state['pomo_running'] = False
             play_sound()
             st.balloons()
-            st.success("⏰ Tempo esgotado!")
+            st.success("⏰ Tempo esgotado! Hora de descansar! 🎉")
             save_pomodoro_session(minutes)
+
+    # --- DICA DO POMODORO RECOLOCADA AQUI ---
+    if 'first_load' not in st.session_state:
+        st.session_state['first_load'] = True
+        st.info("""
+        💡 **Dica de Uso:**
+        Minimize a janela após iniciar o timer. Você receberá uma notificação sonora quando acabar!
+        """)
+    # ----------------------------------------
 
     st.markdown("---")
     st.info("💡 Dados sincronizados com Google Sheets.")
@@ -427,7 +436,7 @@ elif page == "📅 Cronograma":
                     st.session_state['progress']["crono_text"] = crono_data
                     save_data(st.session_state['progress'])
     
-    # --- ÁREA DE HISTÓRICO APERFEIÇOADA ---
+    # --- ÁREA DE HISTÓRICO CORRIGIDA ---
     with tab_history:
         st.subheader("📈 Histórico de Atividades Semanais")
         
@@ -441,35 +450,39 @@ elif page == "📅 Cronograma":
                     st_data = st.session_state['progress'].get(key, {})
                     
                     if st_data.get("last_modified"):
-                        try:
-                            last_mod = datetime.fromisoformat(st_data.get("last_modified"))
-                            week_num = last_mod.isocalendar()[1]
-                            year = last_mod.year
-                            week_key = f"{year}-S{week_num:02d}"
-                            
-                            if week_key not in weekly_data:
-                                weekly_data[week_key] = {
-                                    "topicos": [],
-                                    "questoes": 0,
-                                    "materias": set()
-                                }
-                            
-                            # Define o Status (Concluído ou Em Andamento)
-                            is_done = st_data.get("teoria") and st_data.get("questoes") and st_data.get("revisao")
-                            status_label = "✅ Concluído" if is_done else "🚧 Em Estudo"
-                            
-                            weekly_data[week_key]["topicos"].append({
-                                "Matéria": mat_cat,
-                                "Subtópico": s,
-                                "Situação": status_label,
-                                "Questões": st_data.get("num_questoes", 0)
-                            })
-                            
-                            weekly_data[week_key]["questoes"] += st_data.get("num_questoes", 0)
-                            weekly_data[week_key]["materias"].add(mat_cat)
-                            
-                        except:
-                            pass
+                        # --- FILTRO IMPORTANTE: SÓ MOSTRA SE TIVER PROGRESSO REAL ---
+                        has_progress = st_data.get("teoria") or st_data.get("questoes") or st_data.get("revisao") or st_data.get("num_questoes", 0) > 0
+                        
+                        if has_progress:
+                            try:
+                                last_mod = datetime.fromisoformat(st_data.get("last_modified"))
+                                week_num = last_mod.isocalendar()[1]
+                                year = last_mod.year
+                                week_key = f"{year}-S{week_num:02d}"
+                                
+                                if week_key not in weekly_data:
+                                    weekly_data[week_key] = {
+                                        "topicos": [],
+                                        "questoes": 0,
+                                        "materias": set()
+                                    }
+                                
+                                # Define o Status (Concluído ou Em Andamento)
+                                is_done = st_data.get("teoria") and st_data.get("questoes") and st_data.get("revisao")
+                                status_label = "✅ Concluído" if is_done else "🚧 Em Estudo"
+                                
+                                weekly_data[week_key]["topicos"].append({
+                                    "Matéria": mat_cat,
+                                    "Subtópico": s,
+                                    "Situação": status_label,
+                                    "Questões": st_data.get("num_questoes", 0)
+                                })
+                                
+                                weekly_data[week_key]["questoes"] += st_data.get("num_questoes", 0)
+                                weekly_data[week_key]["materias"].add(mat_cat)
+                                
+                            except:
+                                pass
         
         if weekly_data:
             sorted_weeks = sorted(weekly_data.items(), reverse=True)
@@ -493,7 +506,7 @@ elif page == "📅 Cronograma":
                 materias_str = ", ".join(week_info["materias"])
                 
                 with st.expander(
-                    f"📅 **Semana {week_key}** • {num_topicos} tópicos estudados",
+                    f"📅 **Semana {week_key}** • {num_topicos} tópicos ativos",
                     expanded=False
                 ):
                     # Tabela Otimizada
@@ -518,4 +531,4 @@ elif page == "📅 Cronograma":
                     
                     st.caption(f"Disciplinas tocadas: {materias_str}")
         else:
-            st.info("📭 Nenhum histórico ainda. Seus estudos aparecerão aqui organizados por semana assim que você começar a marcar o progresso!")
+            st.info("📭 Nenhum histórico ainda. Seus estudos aparecerão aqui organizados por semana assim que você marcar o progresso nos checkboxes!")

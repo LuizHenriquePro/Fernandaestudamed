@@ -275,6 +275,19 @@ with st.sidebar:
             st.success("⏰ Tempo esgotado! Hora de descansar! 🎉")
             save_pomodoro_session(minutes)
 
+    # Aviso de primeira carga - APÓS o timer
+    if 'first_load' not in st.session_state:
+        st.session_state['first_load'] = True
+        st.info("""
+        💡 **Dica de Uso do Pomodoro:**
+        - Inicie o timer
+        - Minimize esta janela (não feche!)
+        - Continue escrevendo/estudando
+        - Uma notificação vai aparecer quando terminar!
+        
+        ⚠️ Não feche o navegador, apenas minimize.
+        """)
+
     st.markdown("---")
     st.info("💡 Dados sincronizados com Google Sheets.")
     
@@ -450,14 +463,126 @@ elif page == "📝 Edital Vertical":
 # --- CRONOGRAMA ---
 elif page == "📅 Cronograma":
     st.header("📅 Planejamento Semanal")
-    days = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
-    crono_data = st.session_state['progress'].get("crono_text", {d: "" for d in days})
     
-    c1, c2 = st.columns(2)
-    for i, d in enumerate(days):
-        with (c1 if i % 2 == 0 else c2):
-            txt = st.text_area(f"📌 {d}", value=crono_data.get(d, ""), key=f"txt{d}", height=120)
-            if txt != crono_data.get(d):
-                crono_data[d] = txt
-                st.session_state['progress']["crono_text"] = crono_data
-                save_data(st.session_state['progress'])
+    tab_plan, tab_history = st.tabs(["📝 Planejamento", "📊 Histórico Semanal"])
+    
+    with tab_plan:
+        days = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
+        crono_data = st.session_state['progress'].get("crono_text", {d: "" for d in days})
+        
+        c1, c2 = st.columns(2)
+        for i, d in enumerate(days):
+            with (c1 if i % 2 == 0 else c2):
+                txt = st.text_area(f"📌 {d}", value=crono_data.get(d, ""), key=f"txt{d}", height=120)
+                if txt != crono_data.get(d):
+                    crono_data[d] = txt
+                    st.session_state['progress']["crono_text"] = crono_data
+                    save_data(st.session_state['progress'])
+    
+    with tab_history:
+        st.subheader("📈 Histórico de Estudos por Semana")
+        
+        # Organiza dados por semana
+        weekly_data = {}
+        
+        for mat_cat, topicos in SYLLABUS.items():
+            for nome_topico, subtopicos in topicos.items():
+                for s in subtopicos:
+                    key = f"{mat_cat}-{nome_topico}-{s}"
+                    st_data = st.session_state['progress'].get(key, {})
+                    
+                    if st_data.get("last_modified"):
+                        try:
+                            last_mod = datetime.fromisoformat(st_data.get("last_modified"))
+                            # Pega o número da semana no ano (ISO)
+                            week_num = last_mod.isocalendar()[1]
+                            year = last_mod.year
+                            week_key = f"{year}-S{week_num:02d}"
+                            
+                            if week_key not in weekly_data:
+                                weekly_data[week_key] = {
+                                    "topicos": [],
+                                    "questoes": 0,
+                                    "materias": set()
+                                }
+                            
+                            weekly_data[week_key]["topicos"].append({
+                                "nome": s,
+                                "materia": mat_cat,
+                                "topico": nome_topico,
+                                "questoes": st_data.get("num_questoes", 0),
+                                "data": last_mod.strftime("%d/%m/%Y")
+                            })
+                            weekly_data[week_key]["questoes"] += st_data.get("num_questoes", 0)
+                            weekly_data[week_key]["materias"].add(mat_cat)
+                            
+                        except:
+                            pass
+        
+        if weekly_data:
+            # Ordena por semana (mais recente primeiro)
+            sorted_weeks = sorted(weekly_data.items(), reverse=True)
+            
+            # Resumo geral
+            col1, col2, col3 = st.columns(3)
+            total_weeks = len(sorted_weeks)
+            total_questoes_hist = sum([w[1]["questoes"] for w in sorted_weeks])
+            media_questoes = total_questoes_hist / total_weeks if total_weeks > 0 else 0
+            
+            col1.metric("📅 Semanas Registradas", total_weeks)
+            col2.metric("✍️ Total de Questões", total_questoes_hist)
+            col3.metric("📊 Média por Semana", f"{media_questoes:.1f}")
+            
+            st.markdown("---")
+            
+            # Exibe cada semana em expander
+            for week_key, week_info in sorted_weeks:
+                num_topicos = len(week_info["topicos"])
+                num_questoes = week_info["questoes"]
+                materias_str = ", ".join(week_info["materias"])
+                
+                with st.expander(
+                    f"📅 **{week_key}** • {num_topicos} tópicos • {num_questoes} questões • {materias_str}",
+                    expanded=False
+                ):
+                    # Tabela de tópicos da semana
+                    df_week = pd.DataFrame(week_info["topicos"])
+                    df_week = df_week[["data", "materia", "topico", "nome", "questoes"]]
+                    df_week.columns = ["Data", "Matéria", "Tópico", "Subtópico", "Questões"]
+                    
+                    st.dataframe(
+                        df_week,
+                        use_container_width=True,
+                        hide_index=True
+                    )
+                    
+                    # Estatísticas da semana
+                    st.markdown("**📊 Resumo da Semana:**")
+                    col_a, col_b = st.columns(2)
+                    col_a.metric("Total de Tópicos", num_topicos)
+                    col_b.metric("Total de Questões", num_questoes)
+            
+            # Gráfico de evolução
+            st.markdown("---")
+            st.subheader("📈 Evolução de Questões por Semana")
+            
+            chart_weeks = []
+            for week_key, week_info in sorted(sorted_weeks):
+                chart_weeks.append({
+                    "Semana": week_key,
+                    "Questões": week_info["questoes"],
+                    "Tópicos": len(week_info["topicos"])
+                })
+            
+            df_chart_weeks = pd.DataFrame(chart_weeks)
+            st.line_chart(df_chart_weeks.set_index("Semana"))
+            
+        else:
+            st.info("📭 Nenhum histórico de estudos registrado ainda. Comece a marcar seus progressos no Edital Vertical!")
+            st.markdown("""
+            **💡 Como funciona:**
+            - Sempre que você marca teoria/questões/revisão no Edital Vertical
+            - O sistema registra automaticamente a data
+            - Aqui você visualiza seu progresso organizado por semana
+            - Acompanhe sua evolução e identifique padrões de estudo!
+            """)

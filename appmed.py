@@ -17,7 +17,6 @@ st.set_page_config(
 # --- SOLICITA PERMISSÃO DE NOTIFICAÇÃO LOGO AO CARREGAR ---
 REQUEST_PERMISSION = """
 <script>
-    // Pede permissão assim que o app carrega
     if ('Notification' in window && Notification.permission === 'default') {
         Notification.requestPermission();
     }
@@ -28,9 +27,9 @@ st.markdown(REQUEST_PERMISSION, unsafe_allow_html=True)
 # --- CONFIGURAÇÕES DO POMODORO ---
 POMODORO_SETTINGS = {
     'som_url': 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3',
-    'volume': 0.7,  # 0.0 a 1.0
+    'volume': 0.7,
     'vibrar': True,
-    'notificacao_persistente': True  # Fica até clicar
+    'notificacao_persistente': True
 }
 
 # --- CONEXÃO ROBUSTA COM GOOGLE SHEETS ---
@@ -46,8 +45,7 @@ def connect_to_gsheets():
         client = gspread.authorize(creds)
         
         # --- ID DA PLANILHA ---
-        # Cole o ID da sua planilha aqui (aquela parte entre as barras na URL)
-        SPREADSHEET_ID = "1BxiM-uQ2j3k4l5m6n7o8p9q0r1s2t3u4v5w6x7y8z" # <--- TROQUE ISSO PELO SEU ID REAL
+        SPREADSHEET_ID = "1BxiM-uQ2j3k4l5m6n7o8p9q0r1s2t3u4v5w6x7y8z" # <--- SEU ID AQUI
         
         try:
              return client.open_by_key(SPREADSHEET_ID).sheet1
@@ -89,47 +87,17 @@ def save_pomodoro_session(minutes):
     save_data(st.session_state['progress'])
 
 def play_sound():
-    """Som + Notificação otimizada para trabalho em background"""
     notification_html = f"""
     <script>
-        // Tenta tocar o som
         const audio = new Audio('{POMODORO_SETTINGS['som_url']}');
         audio.volume = {POMODORO_SETTINGS['volume']};
-        audio.play().catch(e => {{
-            console.log('Autoplay bloqueado:', e);
-            // Vibração em mobile como fallback
-            if (navigator.vibrate && {str(POMODORO_SETTINGS['vibrar']).lower()}) {{
-                navigator.vibrate([200, 100, 200, 100, 200]);
-            }}
-        }});
+        audio.play().catch(e => {{ console.log('Autoplay bloqueado:', e); }});
         
-        // Notificação persistente
         if ('Notification' in window) {{
             if (Notification.permission === 'granted') {{
-                const notification = new Notification('⏰ Pomodoro Finalizado!', {{
+                new Notification('⏰ Pomodoro Finalizado!', {{
                     body: 'Você focou! Hora de fazer uma pausa 🎉',
-                    icon: 'https://em-content.zobj.net/source/apple/391/tomato_1f345.png',
-                    badge: 'https://em-content.zobj.net/source/apple/391/tomato_1f345.png',
-                    requireInteraction: {str(POMODORO_SETTINGS['notificacao_persistente']).lower()},
-                    tag: 'pomodoro-done',
-                    vibrate: [200, 100, 200],
-                    silent: false
-                }});
-                
-                // Som ao clicar na notificação
-                notification.onclick = function() {{
-                    window.focus();  // Traz o navegador de volta
-                    this.close();
-                }};
-                
-            }} else if (Notification.permission !== 'denied') {{
-                Notification.requestPermission().then(permission => {{
-                    if (permission === 'granted') {{
-                        new Notification('⏰ Pomodoro Finalizado!', {{
-                            body: 'Você focou! Hora de descansar 🎉',
-                            requireInteraction: true
-                        }});
-                    }}
+                    icon: 'https://em-content.zobj.net/source/apple/391/tomato_1f345.png'
                 }});
             }}
         }}
@@ -272,21 +240,8 @@ with st.sidebar:
             st.session_state['pomo_running'] = False
             play_sound()
             st.balloons()
-            st.success("⏰ Tempo esgotado! Hora de descansar! 🎉")
+            st.success("⏰ Tempo esgotado!")
             save_pomodoro_session(minutes)
-
-    # Aviso de primeira carga - APÓS o timer
-    if 'first_load' not in st.session_state:
-        st.session_state['first_load'] = True
-        st.info("""
-        💡 **Dica de Uso do Pomodoro:**
-        - Inicie o timer
-        - Minimize esta janela (não feche!)
-        - Continue escrevendo/estudando
-        - Uma notificação vai aparecer quando terminar!
-        
-        ⚠️ Não feche o navegador, apenas minimize.
-        """)
 
     st.markdown("---")
     st.info("💡 Dados sincronizados com Google Sheets.")
@@ -388,19 +343,12 @@ if page == "📊 Dashboard Analytics":
         else:
             st.info("✅ Nenhuma revisão urgente pendente para hoje.")
 
-        # --- EXPLICAÇÃO DA REVISÃO INTELIGENTE ---
         st.markdown("---")
         with st.container():
             st.markdown("### 🧠 Como funciona a Revisão Inteligente?")
             st.markdown("""
-            Este sistema utiliza o conceito de **Repetição Espaçada** (Spaced Repetition) para combater a curva do esquecimento.
-            
-            O sistema monitora quando você estudou cada tópico pela última vez e sugere revisões nos seguintes intervalos críticos:
-            *   **📅 1 Dia (24h):** Fixação imediata (evita perda de ~50% do conteúdo).
-            *   **📅 7 Dias:** Reforço das conexões neurais.
-            *   **📅 30 Dias:** Consolidação na memória de longo prazo.
-            
-            *Dica: Sempre que você revisar um tópico, interaja com ele na lista (marcando/desmarcando ou editando notas) para que o sistema atualize a data e reinicie o ciclo.*
+            Este sistema utiliza o conceito de **Repetição Espaçada**.
+            Intervalos críticos monitorados: **1 Dia**, **7 Dias** e **30 Dias**.
             """)
 
     with tab3:
@@ -479,8 +427,9 @@ elif page == "📅 Cronograma":
                     st.session_state['progress']["crono_text"] = crono_data
                     save_data(st.session_state['progress'])
     
+    # --- ÁREA DE HISTÓRICO APERFEIÇOADA ---
     with tab_history:
-        st.subheader("📈 Histórico de Estudos por Semana")
+        st.subheader("📈 Histórico de Atividades Semanais")
         
         # Organiza dados por semana
         weekly_data = {}
@@ -494,7 +443,6 @@ elif page == "📅 Cronograma":
                     if st_data.get("last_modified"):
                         try:
                             last_mod = datetime.fromisoformat(st_data.get("last_modified"))
-                            # Pega o número da semana no ano (ISO)
                             week_num = last_mod.isocalendar()[1]
                             year = last_mod.year
                             week_key = f"{year}-S{week_num:02d}"
@@ -506,13 +454,17 @@ elif page == "📅 Cronograma":
                                     "materias": set()
                                 }
                             
+                            # Define o Status (Concluído ou Em Andamento)
+                            is_done = st_data.get("teoria") and st_data.get("questoes") and st_data.get("revisao")
+                            status_label = "✅ Concluído" if is_done else "🚧 Em Estudo"
+                            
                             weekly_data[week_key]["topicos"].append({
-                                "nome": s,
-                                "materia": mat_cat,
-                                "topico": nome_topico,
-                                "questoes": st_data.get("num_questoes", 0),
-                                "data": last_mod.strftime("%d/%m/%Y")
+                                "Matéria": mat_cat,
+                                "Subtópico": s,
+                                "Situação": status_label,
+                                "Questões": st_data.get("num_questoes", 0)
                             })
+                            
                             weekly_data[week_key]["questoes"] += st_data.get("num_questoes", 0)
                             weekly_data[week_key]["materias"].add(mat_cat)
                             
@@ -520,69 +472,50 @@ elif page == "📅 Cronograma":
                             pass
         
         if weekly_data:
-            # Ordena por semana (mais recente primeiro)
             sorted_weeks = sorted(weekly_data.items(), reverse=True)
             
-            # Resumo geral
+            # Resumo Geral
             col1, col2, col3 = st.columns(3)
             total_weeks = len(sorted_weeks)
             total_questoes_hist = sum([w[1]["questoes"] for w in sorted_weeks])
             media_questoes = total_questoes_hist / total_weeks if total_weeks > 0 else 0
             
-            col1.metric("📅 Semanas Registradas", total_weeks)
+            col1.metric("📅 Semanas Ativas", total_weeks)
             col2.metric("✍️ Total de Questões", total_questoes_hist)
-            col3.metric("📊 Média por Semana", f"{media_questoes:.1f}")
+            col3.metric("📊 Média Questões/Semana", f"{media_questoes:.1f}")
             
             st.markdown("---")
             
-            # Exibe cada semana em expander
+            # Exibe cada semana
             for week_key, week_info in sorted_weeks:
                 num_topicos = len(week_info["topicos"])
                 num_questoes = week_info["questoes"]
                 materias_str = ", ".join(week_info["materias"])
                 
                 with st.expander(
-                    f"📅 **{week_key}** • {num_topicos} tópicos • {num_questoes} questões • {materias_str}",
+                    f"📅 **Semana {week_key}** • {num_topicos} tópicos estudados",
                     expanded=False
                 ):
-                    # Tabela de tópicos da semana
+                    # Tabela Otimizada
                     df_week = pd.DataFrame(week_info["topicos"])
-                    df_week = df_week[["data", "materia", "topico", "nome", "questoes"]]
-                    df_week.columns = ["Data", "Matéria", "Tópico", "Subtópico", "Questões"]
                     
                     st.dataframe(
                         df_week,
                         use_container_width=True,
-                        hide_index=True
+                        hide_index=True,
+                        column_config={
+                            "Situação": st.column_config.TextColumn(
+                                "Status",
+                                help="Se o tópico foi finalizado ou está em andamento",
+                                validate="^✅.*"
+                            ),
+                            "Questões": st.column_config.NumberColumn(
+                                "Questões Feitas",
+                                format="%d ✍️"
+                            )
+                        }
                     )
                     
-                    # Estatísticas da semana
-                    st.markdown("**📊 Resumo da Semana:**")
-                    col_a, col_b = st.columns(2)
-                    col_a.metric("Total de Tópicos", num_topicos)
-                    col_b.metric("Total de Questões", num_questoes)
-            
-            # Gráfico de evolução
-            st.markdown("---")
-            st.subheader("📈 Evolução de Questões por Semana")
-            
-            chart_weeks = []
-            for week_key, week_info in sorted(sorted_weeks):
-                chart_weeks.append({
-                    "Semana": week_key,
-                    "Questões": week_info["questoes"],
-                    "Tópicos": len(week_info["topicos"])
-                })
-            
-            df_chart_weeks = pd.DataFrame(chart_weeks)
-            st.line_chart(df_chart_weeks.set_index("Semana"))
-            
+                    st.caption(f"Disciplinas tocadas: {materias_str}")
         else:
-            st.info("📭 Nenhum histórico de estudos registrado ainda. Comece a marcar seus progressos no Edital Vertical!")
-            st.markdown("""
-            **💡 Como funciona:**
-            - Sempre que você marca teoria/questões/revisão no Edital Vertical
-            - O sistema registra automaticamente a data
-            - Aqui você visualiza seu progresso organizado por semana
-            - Acompanhe sua evolução e identifique padrões de estudo!
-            """)
+            st.info("📭 Nenhum histórico ainda. Seus estudos aparecerão aqui organizados por semana assim que você começar a marcar o progresso!")

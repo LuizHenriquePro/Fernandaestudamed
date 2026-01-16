@@ -14,6 +14,25 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# --- SOLICITA PERMISSÃO DE NOTIFICAÇÃO LOGO AO CARREGAR ---
+REQUEST_PERMISSION = """
+<script>
+    // Pede permissão assim que o app carrega
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
+</script>
+"""
+st.markdown(REQUEST_PERMISSION, unsafe_allow_html=True)
+
+# --- CONFIGURAÇÕES DO POMODORO ---
+POMODORO_SETTINGS = {
+    'som_url': 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3',
+    'volume': 0.7,  # 0.0 a 1.0
+    'vibrar': True,
+    'notificacao_persistente': True  # Fica até clicar
+}
+
 # --- CONEXÃO ROBUSTA COM GOOGLE SHEETS ---
 @st.cache_resource
 def connect_to_gsheets():
@@ -70,12 +89,53 @@ def save_pomodoro_session(minutes):
     save_data(st.session_state['progress'])
 
 def play_sound():
-    audio_html = """
-    <audio autoplay>
-    <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
-    </audio>
+    """Som + Notificação otimizada para trabalho em background"""
+    notification_html = f"""
+    <script>
+        // Tenta tocar o som
+        const audio = new Audio('{POMODORO_SETTINGS['som_url']}');
+        audio.volume = {POMODORO_SETTINGS['volume']};
+        audio.play().catch(e => {{
+            console.log('Autoplay bloqueado:', e);
+            // Vibração em mobile como fallback
+            if (navigator.vibrate && {str(POMODORO_SETTINGS['vibrar']).lower()}) {{
+                navigator.vibrate([200, 100, 200, 100, 200]);
+            }}
+        }});
+        
+        // Notificação persistente
+        if ('Notification' in window) {{
+            if (Notification.permission === 'granted') {{
+                const notification = new Notification('⏰ Pomodoro Finalizado!', {{
+                    body: 'Você focou! Hora de fazer uma pausa 🎉',
+                    icon: 'https://em-content.zobj.net/source/apple/391/tomato_1f345.png',
+                    badge: 'https://em-content.zobj.net/source/apple/391/tomato_1f345.png',
+                    requireInteraction: {str(POMODORO_SETTINGS['notificacao_persistente']).lower()},
+                    tag: 'pomodoro-done',
+                    vibrate: [200, 100, 200],
+                    silent: false
+                }});
+                
+                // Som ao clicar na notificação
+                notification.onclick = function() {{
+                    window.focus();  // Traz o navegador de volta
+                    this.close();
+                }};
+                
+            }} else if (Notification.permission !== 'denied') {{
+                Notification.requestPermission().then(permission => {{
+                    if (permission === 'granted') {{
+                        new Notification('⏰ Pomodoro Finalizado!', {{
+                            body: 'Você focou! Hora de descansar 🎉',
+                            requireInteraction: true
+                        }});
+                    }}
+                }});
+            }}
+        }}
+    </script>
     """
-    st.markdown(audio_html, unsafe_allow_html=True)
+    st.markdown(notification_html, unsafe_allow_html=True)
 
 def sync_timer():
     st.session_state['pomo_running'] = False
@@ -153,6 +213,20 @@ if SHEET is None:
 
 with st.sidebar:
     st.header("🌼 Menu")
+    
+    # Aviso de primeira carga
+    if 'first_load' not in st.session_state:
+        st.session_state['first_load'] = True
+        st.info("""
+        💡 **Dica de Uso do Pomodoro:**
+        - Inicie o timer
+        - Minimize esta janela (não feche!)
+        - Continue escrevendo/estudando
+        - Uma notificação vai aparecer quando terminar!
+        
+        ⚠️ Não feche o navegador, apenas minimize.
+        """)
+    
     page = st.radio("Selecione:", ["📊 Dashboard Analytics", "📝 Edital Vertical", "📅 Cronograma"])
     st.markdown("---")
 
@@ -212,7 +286,7 @@ with st.sidebar:
             st.session_state['pomo_running'] = False
             play_sound()
             st.balloons()
-            st.success("Tempo esgotado!")
+            st.success("⏰ Tempo esgotado! Hora de descansar! 🎉")
             save_pomodoro_session(minutes)
 
     st.markdown("---")

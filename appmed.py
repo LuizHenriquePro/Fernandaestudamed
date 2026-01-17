@@ -1,8 +1,11 @@
 import streamlit as st
+import streamlit.components.v1 as components  # Importante para notificações JS
 import json
 import pandas as pd
 import gspread
 import time
+import base64  # Necessário para o fix do Safari
+import requests  # Necessário para baixar o som no servidor
 from datetime import datetime
 from oauth2client.service_account import ServiceAccountCredentials
 
@@ -58,7 +61,19 @@ def connect_to_gsheets():
 
 SHEET = connect_to_gsheets()
 
-# --- FUNÇÕES DE SISTEMA ---
+# --- FUNÇÕES DE SISTEMA & AUDIO FIX ---
+
+# Cache para não baixar o áudio repetidamente
+@st.cache_data(show_spinner=False)
+def get_audio_base64(url):
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        return base64.b64encode(response.content).decode('utf-8')
+    except Exception as e:
+        st.error(f"Erro ao carregar áudio: {e}")
+        return None
+
 def load_data():
     if SHEET is None: return {}
     try:
@@ -86,229 +101,36 @@ def save_pomodoro_session(minutes):
     st.session_state['progress']["pomodoro_sessions"].append(session_data)
     save_data(st.session_state['progress'])
 
+# --- NOVA FUNÇÃO PLAY_SOUND ROBUSTA (BASE64) ---
 def play_sound():
-    """
-    Versão otimizada para Safari com múltiplas estratégias de notificação.
-    """
-    notification_html = f"""
-    <div id="pomodoro-alert" style="
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 30px 50px;
-        border-radius: 20px;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        z-index: 999999;
-        text-align: center;
-        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-        animation: slideIn 0.3s ease-out, pulse 2s infinite;
-    ">
-        <div style="font-size: 60px; margin-bottom: 10px;">🍅⏰</div>
-        <h2 style="margin: 10px 0; font-size: 28px;">Pomodoro Finalizado!</h2>
-        <p style="font-size: 18px; margin: 15px 0;">Você focou! Hora de fazer uma pausa 🎉</p>
-        <button id="play-sound-btn" style="
-            background: white;
-            color: #667eea;
-            border: none;
-            padding: 15px 40px;
-            font-size: 18px;
-            font-weight: bold;
-            border-radius: 50px;
-            cursor: pointer;
-            margin-top: 15px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-            animation: shake 0.5s infinite;
-        ">🔊 Clique para Tocar Som</button>
-        <button id="close-alert-btn" style="
-            background: rgba(255,255,255,0.2);
-            color: white;
-            border: 2px solid white;
-            padding: 12px 30px;
-            font-size: 16px;
-            border-radius: 50px;
-            cursor: pointer;
-            margin-top: 10px;
-            margin-left: 10px;
-        ">Fechar</button>
-    </div>
+    # 1. Recupera o áudio em formato texto (Base64)
+    audio_base64 = get_audio_base64(POMODORO_SETTINGS['som_url'])
     
-    <style>
-        @keyframes slideIn {{
-            from {{ opacity: 0; transform: translate(-50%, -60%); }}
-            to {{ opacity: 1; transform: translate(-50%, -50%); }}
-        }}
-        @keyframes pulse {{
-            0%, 100% {{ box-shadow: 0 20px 60px rgba(0,0,0,0.3); }}
-            50% {{ box-shadow: 0 20px 80px rgba(102, 126, 234, 0.6); }}
-        }}
-        @keyframes shake {{
-            0%, 100% {{ transform: translateX(0); }}
-            25% {{ transform: translateX(-5px); }}
-            75% {{ transform: translateX(5px); }}
-        }}
-    </style>
-    
-    <script>
-        const soundUrl = '{POMODORO_SETTINGS['som_url']}';
-        const volume = {POMODORO_SETTINGS['volume']};
-        let audioPlayed = false;
-        
-        // Função para tocar som com múltiplos fallbacks
-        async function tryPlaySound() {{
-            if (audioPlayed) return;
-            
-            try {{
-                // Tenta com Audio API
-                const audio = new Audio(soundUrl);
-                audio.volume = volume;
-                await audio.play();
-                console.log('✅ Som tocado via Audio API');
-                audioPlayed = true;
-                return true;
-            }} catch (e1) {{
-                console.warn('Audio API bloqueado, tentando Web Audio...', e1);
-                
-                // Fallback: Web Audio API (mais confiável no Safari)
-                try {{
-                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                    
-                    // Carrega o som via fetch
-                    const response = await fetch(soundUrl);
-                    const arrayBuffer = await response.arrayBuffer();
-                    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-                    
-                    const source = audioCtx.createBufferSource();
-                    const gainNode = audioCtx.createGain();
-                    
-                    source.buffer = audioBuffer;
-                    source.connect(gainNode);
-                    gainNode.connect(audioCtx.destination);
-                    gainNode.gain.value = volume;
-                    
-                    source.start(0);
-                    console.log('✅ Som tocado via Web Audio API');
-                    audioPlayed = true;
-                    return true;
-                }} catch (e2) {{
-                    console.warn('Web Audio bloqueado, usando beep...', e2);
-                    
-                    // Último fallback: beep sintetizado
-                    try {{
-                        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                        const oscillator = audioCtx.createOscillator();
-                        const gainNode = audioCtx.createGain();
-                        
-                        oscillator.connect(gainNode);
-                        gainNode.connect(audioCtx.destination);
-                        
-                        oscillator.frequency.value = 800;
-                        oscillator.type = 'sine';
-                        gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
-                        
-                        oscillator.start(audioCtx.currentTime);
-                        oscillator.stop(audioCtx.currentTime + 0.5);
-                        console.log('✅ Beep tocado');
-                        audioPlayed = true;
-                        return true;
-                    }} catch (e3) {{
-                        console.error('Todos os métodos de áudio falharam', e3);
-                        return false;
-                    }}
-                }}
-            }}
-        }}
-        
-        // Tenta tocar automaticamente
-        tryPlaySound().then(success => {{
-            if (success) {{
-                // Se conseguiu tocar, remove o modal após 3 segundos
-                setTimeout(() => {{
-                    document.getElementById('pomodoro-alert')?.remove();
-                }}, 3000);
-            }}
-        }});
-        
-        // Botão manual
-        document.getElementById('play-sound-btn').addEventListener('click', async function() {{
-            const btn = this;
-            const success = await tryPlaySound();
-            
-            if (success) {{
-                btn.textContent = '✅ Som Tocado!';
-                btn.style.background = '#4ade80';
-                btn.style.animation = 'none';
-                setTimeout(() => {{
-                    document.getElementById('pomodoro-alert')?.remove();
-                }}, 1500);
-            }} else {{
-                btn.textContent = '❌ Erro no Som';
-                btn.style.background = '#ef4444';
-            }}
-        }});
-        
-        document.getElementById('close-alert-btn').addEventListener('click', function() {{
-            document.getElementById('pomodoro-alert')?.remove();
-        }});
-        
-        // Notificação
-        if ('Notification' in window && Notification.permission === 'granted') {{
-            try {{
-                const notification = new Notification('⏰ Pomodoro Finalizado!', {{
-                    body: 'Você focou! Hora de fazer uma pausa 🎉',
-                    icon: 'https://em-content.zobj.net/source/apple/391/tomato_1f345.png',
-                    requireInteraction: {str(POMODORO_SETTINGS['notificacao_persistente']).lower()},
-                    tag: 'pomodoro-timer',
-                    vibrate: {str([200, 100, 200] if POMODORO_SETTINGS['vibrar'] else []).replace("'", "")}
-                }});
-                
-                notification.onclick = () => {{
-                    window.focus();
-                    tryPlaySound();
-                    notification.close();
-                    document.getElementById('pomodoro-alert')?.remove();
-                }};
-            }} catch (e) {{
-                console.warn('Notificação não disponível:', e);
-            }}
-        }}
-        
-        // Auto-close após 30 segundos
-        setTimeout(() => {{
-            document.getElementById('pomodoro-alert')?.remove();
-        }}, 30000);
-        
-        console.log('🍅 Pomodoro finalizado!');
-        console.log('Navegador:', navigator.userAgent.includes('Safari') ? 'Safari' : 'Outro');
-    </script>
-    """
-    
-    st.markdown(notification_html, unsafe_allow_html=True)
+    # 2. Injeta o áudio diretamente no HTML com autoplay
+    if audio_base64:
+        audio_html = f"""
+            <audio autoplay="true" style="display:none;">
+                <source src="data:audio/mp3;base64,{audio_base64}" type="audio/mp3">
+            </audio>
+        """
+        st.markdown(audio_html, unsafe_allow_html=True)
 
-def preload_audio_safari():
-    """
-    Pré-carrega áudio quando o usuário clica em START.
-    Cria o contexto de interação necessário para o Safari.
-    """
-    preload_html = f"""
+    # 3. Feedback Visual Nativo (Toast + Balloons)
+    st.balloons()
+    st.toast("⏰ Tempo esgotado! Hora de descansar!", icon="🎉")
+
+    # 4. Notificação de Sistema (Backup)
+    js_notification = """
     <script>
-        if (!window.pomodoroAudioPreloaded) {{
-            try {{
-                window.pomodoroAudio = new Audio('{POMODORO_SETTINGS['som_url']}');
-                window.pomodoroAudio.volume = {POMODORO_SETTINGS['volume']};
-                window.pomodoroAudio.load();
-                window.pomodoroAudioPreloaded = true;
-                console.log('✅ Áudio pré-carregado (contexto de interação criado)');
-            }} catch (e) {{
-                console.warn('Não foi possível pré-carregar:', e);
-            }}
-        }}
+        if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification('⏰ Pomodoro Finalizado!', {
+                body: 'Você focou! Hora de fazer uma pausa 🎉',
+                icon: 'https://em-content.zobj.net/source/apple/391/tomato_1f345.png'
+            });
+        }
     </script>
     """
-    st.markdown(preload_html, unsafe_allow_html=True)
+    components.html(js_notification, height=0)
 
 def sync_timer():
     st.session_state['pomo_running'] = False
@@ -379,13 +201,6 @@ SYLLABUS = {
 
 # --- INTERFACE ---
 st.title("👩‍⚕️ Planner CESAP")
-
-# Aviso para usuários Safari
-st.info("""
-🍎 **Usuários de Safari:** Para melhor experiência com notificações, permita em:
-**Safari → Preferências → Sites → Notificações** → Permitir para este site
-""", icon="🔔")
-
 st.markdown("---")
 
 if SHEET is None:
@@ -420,11 +235,8 @@ with st.sidebar:
     pause_pomo = col_p2.button("⏸️", help="Pausar")
     reset_pomo = col_p3.button("⏹️", help="Resetar")
     
-    if start_pomo:
-        preload_audio_safari()  # Pré-carrega áudio para Safari
-        st.session_state['pomo_running'] = True
-    if pause_pomo: 
-        st.session_state['pomo_running'] = False
+    if start_pomo: st.session_state['pomo_running'] = True
+    if pause_pomo: st.session_state['pomo_running'] = False
     if reset_pomo:
         st.session_state['pomo_running'] = False
         st.session_state['time_left'] = minutes * 60
@@ -453,36 +265,19 @@ with st.sidebar:
         
         if st.session_state['time_left'] == 0 and st.session_state['pomo_running']:
             st.session_state['pomo_running'] = False
+            # Chama a nova função robusta de áudio
             play_sound()
-            st.balloons()
-            st.success("⏰ Tempo esgotado! Hora de descansar! 🎉")
             save_pomodoro_session(minutes)
 
-    # --- DICAS E CONFIGURAÇÕES ---
-    st.markdown("---")
-    with st.expander("💡 Dicas & Configurações Safari"):
-        st.markdown("""
-        **🍎 Usando Safari?**
-        
-        Para receber alertas quando o Pomodoro terminar:
-        1. ✅ Um **modal visual** aparecerá no centro da tela (sempre funciona!)
-        2. 🔔 **Notificação do navegador** (se você permitiu)
-        3. 🔊 Clique no botão do modal para tocar o som
-        
-        **Configuração ideal (Safari no Mac):**
-        - Safari → Preferências → Sites → Reprodução Automática
-        - Selecione "Permitir Toda Reprodução Automática"
-        
-        **No iPhone/iPad:**
-        - Ajustes → Safari → Reprodução Automática → Permitir
-        
-        💡 **Dica:** Minimize a janela após iniciar o timer. Você receberá notificação!
+    # --- DICA DO POMODORO ---
+    if 'first_load' not in st.session_state:
+        st.session_state['first_load'] = True
+        st.info("""
+        💡 **Dica Safari:**
+        Para garantir o som, vá em Ajustes > Safari > Configurações para este site > Reprodução Automática: 'Permitir Tudo'.
         """)
-        
-        if st.button("🧪 Testar Som e Notificação"):
-            play_sound()
-            st.success("Alerta enviado! Se aparecer um modal, clique no botão para ouvir o som.")
-    
+    # ----------------------------------------
+
     st.markdown("---")
     st.info("💡 Dados sincronizados com Google Sheets.")
     
@@ -667,6 +462,7 @@ elif page == "📅 Cronograma":
                     st.session_state['progress']["crono_text"] = crono_data
                     save_data(st.session_state['progress'])
     
+    # --- ÁREA DE HISTÓRICO ---
     with tab_history:
         st.subheader("📈 Histórico de Atividades Semanais")
         

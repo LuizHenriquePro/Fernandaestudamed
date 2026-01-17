@@ -87,23 +87,228 @@ def save_pomodoro_session(minutes):
     save_data(st.session_state['progress'])
 
 def play_sound():
+    """
+    Versão otimizada para Safari com múltiplas estratégias de notificação.
+    """
     notification_html = f"""
+    <div id="pomodoro-alert" style="
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px 50px;
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        z-index: 999999;
+        text-align: center;
+        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        animation: slideIn 0.3s ease-out, pulse 2s infinite;
+    ">
+        <div style="font-size: 60px; margin-bottom: 10px;">🍅⏰</div>
+        <h2 style="margin: 10px 0; font-size: 28px;">Pomodoro Finalizado!</h2>
+        <p style="font-size: 18px; margin: 15px 0;">Você focou! Hora de fazer uma pausa 🎉</p>
+        <button id="play-sound-btn" style="
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            margin-top: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            animation: shake 0.5s infinite;
+        ">🔊 Clique para Tocar Som</button>
+        <button id="close-alert-btn" style="
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 2px solid white;
+            padding: 12px 30px;
+            font-size: 16px;
+            border-radius: 50px;
+            cursor: pointer;
+            margin-top: 10px;
+            margin-left: 10px;
+        ">Fechar</button>
+    </div>
+    
+    <style>
+        @keyframes slideIn {{
+            from {{ opacity: 0; transform: translate(-50%, -60%); }}
+            to {{ opacity: 1; transform: translate(-50%, -50%); }}
+        }}
+        @keyframes pulse {{
+            0%, 100% {{ box-shadow: 0 20px 60px rgba(0,0,0,0.3); }}
+            50% {{ box-shadow: 0 20px 80px rgba(102, 126, 234, 0.6); }}
+        }}
+        @keyframes shake {{
+            0%, 100% {{ transform: translateX(0); }}
+            25% {{ transform: translateX(-5px); }}
+            75% {{ transform: translateX(5px); }}
+        }}
+    </style>
+    
     <script>
-        const audio = new Audio('{POMODORO_SETTINGS['som_url']}');
-        audio.volume = {POMODORO_SETTINGS['volume']};
-        audio.play().catch(e => {{ console.log('Autoplay bloqueado:', e); }});
+        const soundUrl = '{POMODORO_SETTINGS['som_url']}';
+        const volume = {POMODORO_SETTINGS['volume']};
+        let audioPlayed = false;
         
-        if ('Notification' in window) {{
-            if (Notification.permission === 'granted') {{
-                new Notification('⏰ Pomodoro Finalizado!', {{
+        // Função para tocar som com múltiplos fallbacks
+        async function tryPlaySound() {{
+            if (audioPlayed) return;
+            
+            try {{
+                // Tenta com Audio API
+                const audio = new Audio(soundUrl);
+                audio.volume = volume;
+                await audio.play();
+                console.log('✅ Som tocado via Audio API');
+                audioPlayed = true;
+                return true;
+            }} catch (e1) {{
+                console.warn('Audio API bloqueado, tentando Web Audio...', e1);
+                
+                // Fallback: Web Audio API (mais confiável no Safari)
+                try {{
+                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    
+                    // Carrega o som via fetch
+                    const response = await fetch(soundUrl);
+                    const arrayBuffer = await response.arrayBuffer();
+                    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+                    
+                    const source = audioCtx.createBufferSource();
+                    const gainNode = audioCtx.createGain();
+                    
+                    source.buffer = audioBuffer;
+                    source.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+                    gainNode.gain.value = volume;
+                    
+                    source.start(0);
+                    console.log('✅ Som tocado via Web Audio API');
+                    audioPlayed = true;
+                    return true;
+                }} catch (e2) {{
+                    console.warn('Web Audio bloqueado, usando beep...', e2);
+                    
+                    // Último fallback: beep sintetizado
+                    try {{
+                        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                        const oscillator = audioCtx.createOscillator();
+                        const gainNode = audioCtx.createGain();
+                        
+                        oscillator.connect(gainNode);
+                        gainNode.connect(audioCtx.destination);
+                        
+                        oscillator.frequency.value = 800;
+                        oscillator.type = 'sine';
+                        gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+                        
+                        oscillator.start(audioCtx.currentTime);
+                        oscillator.stop(audioCtx.currentTime + 0.5);
+                        console.log('✅ Beep tocado');
+                        audioPlayed = true;
+                        return true;
+                    }} catch (e3) {{
+                        console.error('Todos os métodos de áudio falharam', e3);
+                        return false;
+                    }}
+                }}
+            }}
+        }}
+        
+        // Tenta tocar automaticamente
+        tryPlaySound().then(success => {{
+            if (success) {{
+                // Se conseguiu tocar, remove o modal após 3 segundos
+                setTimeout(() => {{
+                    document.getElementById('pomodoro-alert')?.remove();
+                }}, 3000);
+            }}
+        }});
+        
+        // Botão manual
+        document.getElementById('play-sound-btn').addEventListener('click', async function() {{
+            const btn = this;
+            const success = await tryPlaySound();
+            
+            if (success) {{
+                btn.textContent = '✅ Som Tocado!';
+                btn.style.background = '#4ade80';
+                btn.style.animation = 'none';
+                setTimeout(() => {{
+                    document.getElementById('pomodoro-alert')?.remove();
+                }}, 1500);
+            }} else {{
+                btn.textContent = '❌ Erro no Som';
+                btn.style.background = '#ef4444';
+            }}
+        }});
+        
+        document.getElementById('close-alert-btn').addEventListener('click', function() {{
+            document.getElementById('pomodoro-alert')?.remove();
+        }});
+        
+        // Notificação
+        if ('Notification' in window && Notification.permission === 'granted') {{
+            try {{
+                const notification = new Notification('⏰ Pomodoro Finalizado!', {{
                     body: 'Você focou! Hora de fazer uma pausa 🎉',
-                    icon: 'https://em-content.zobj.net/source/apple/391/tomato_1f345.png'
+                    icon: 'https://em-content.zobj.net/source/apple/391/tomato_1f345.png',
+                    requireInteraction: {str(POMODORO_SETTINGS['notificacao_persistente']).lower()},
+                    tag: 'pomodoro-timer',
+                    vibrate: {str([200, 100, 200] if POMODORO_SETTINGS['vibrar'] else []).replace("'", "")}
                 }});
+                
+                notification.onclick = () => {{
+                    window.focus();
+                    tryPlaySound();
+                    notification.close();
+                    document.getElementById('pomodoro-alert')?.remove();
+                }};
+            }} catch (e) {{
+                console.warn('Notificação não disponível:', e);
+            }}
+        }}
+        
+        // Auto-close após 30 segundos
+        setTimeout(() => {{
+            document.getElementById('pomodoro-alert')?.remove();
+        }}, 30000);
+        
+        console.log('🍅 Pomodoro finalizado!');
+        console.log('Navegador:', navigator.userAgent.includes('Safari') ? 'Safari' : 'Outro');
+    </script>
+    """
+    
+    st.markdown(notification_html, unsafe_allow_html=True)
+
+def preload_audio_safari():
+    """
+    Pré-carrega áudio quando o usuário clica em START.
+    Cria o contexto de interação necessário para o Safari.
+    """
+    preload_html = f"""
+    <script>
+        if (!window.pomodoroAudioPreloaded) {{
+            try {{
+                window.pomodoroAudio = new Audio('{POMODORO_SETTINGS['som_url']}');
+                window.pomodoroAudio.volume = {POMODORO_SETTINGS['volume']};
+                window.pomodoroAudio.load();
+                window.pomodoroAudioPreloaded = true;
+                console.log('✅ Áudio pré-carregado (contexto de interação criado)');
+            }} catch (e) {{
+                console.warn('Não foi possível pré-carregar:', e);
             }}
         }}
     </script>
     """
-    st.markdown(notification_html, unsafe_allow_html=True)
+    st.markdown(preload_html, unsafe_allow_html=True)
 
 def sync_timer():
     st.session_state['pomo_running'] = False
@@ -174,6 +379,13 @@ SYLLABUS = {
 
 # --- INTERFACE ---
 st.title("👩‍⚕️ Planner CESAP")
+
+# Aviso para usuários Safari
+st.info("""
+🍎 **Usuários de Safari:** Para melhor experiência com notificações, permita em:
+**Safari → Preferências → Sites → Notificações** → Permitir para este site
+""", icon="🔔")
+
 st.markdown("---")
 
 if SHEET is None:
@@ -208,8 +420,11 @@ with st.sidebar:
     pause_pomo = col_p2.button("⏸️", help="Pausar")
     reset_pomo = col_p3.button("⏹️", help="Resetar")
     
-    if start_pomo: st.session_state['pomo_running'] = True
-    if pause_pomo: st.session_state['pomo_running'] = False
+    if start_pomo:
+        preload_audio_safari()  # Pré-carrega áudio para Safari
+        st.session_state['pomo_running'] = True
+    if pause_pomo: 
+        st.session_state['pomo_running'] = False
     if reset_pomo:
         st.session_state['pomo_running'] = False
         st.session_state['time_left'] = minutes * 60
@@ -243,15 +458,31 @@ with st.sidebar:
             st.success("⏰ Tempo esgotado! Hora de descansar! 🎉")
             save_pomodoro_session(minutes)
 
-    # --- DICA DO POMODORO RECOLOCADA AQUI ---
-    if 'first_load' not in st.session_state:
-        st.session_state['first_load'] = True
-        st.info("""
-        💡 **Dica de Uso:**
-        Minimize a janela após iniciar o timer. Você receberá uma notificação sonora quando acabar!
+    # --- DICAS E CONFIGURAÇÕES ---
+    st.markdown("---")
+    with st.expander("💡 Dicas & Configurações Safari"):
+        st.markdown("""
+        **🍎 Usando Safari?**
+        
+        Para receber alertas quando o Pomodoro terminar:
+        1. ✅ Um **modal visual** aparecerá no centro da tela (sempre funciona!)
+        2. 🔔 **Notificação do navegador** (se você permitiu)
+        3. 🔊 Clique no botão do modal para tocar o som
+        
+        **Configuração ideal (Safari no Mac):**
+        - Safari → Preferências → Sites → Reprodução Automática
+        - Selecione "Permitir Toda Reprodução Automática"
+        
+        **No iPhone/iPad:**
+        - Ajustes → Safari → Reprodução Automática → Permitir
+        
+        💡 **Dica:** Minimize a janela após iniciar o timer. Você receberá notificação!
         """)
-    # ----------------------------------------
-
+        
+        if st.button("🧪 Testar Som e Notificação"):
+            play_sound()
+            st.success("Alerta enviado! Se aparecer um modal, clique no botão para ouvir o som.")
+    
     st.markdown("---")
     st.info("💡 Dados sincronizados com Google Sheets.")
     
@@ -436,11 +667,9 @@ elif page == "📅 Cronograma":
                     st.session_state['progress']["crono_text"] = crono_data
                     save_data(st.session_state['progress'])
     
-    # --- ÁREA DE HISTÓRICO CORRIGIDA ---
     with tab_history:
         st.subheader("📈 Histórico de Atividades Semanais")
         
-        # Organiza dados por semana
         weekly_data = {}
         
         for mat_cat, topicos in SYLLABUS.items():
@@ -450,7 +679,6 @@ elif page == "📅 Cronograma":
                     st_data = st.session_state['progress'].get(key, {})
                     
                     if st_data.get("last_modified"):
-                        # --- FILTRO IMPORTANTE: SÓ MOSTRA SE TIVER PROGRESSO REAL ---
                         has_progress = st_data.get("teoria") or st_data.get("questoes") or st_data.get("revisao") or st_data.get("num_questoes", 0) > 0
                         
                         if has_progress:
@@ -467,7 +695,6 @@ elif page == "📅 Cronograma":
                                         "materias": set()
                                     }
                                 
-                                # Define o Status (Concluído ou Em Andamento)
                                 is_done = st_data.get("teoria") and st_data.get("questoes") and st_data.get("revisao")
                                 status_label = "✅ Concluído" if is_done else "🚧 Em Estudo"
                                 
@@ -487,7 +714,6 @@ elif page == "📅 Cronograma":
         if weekly_data:
             sorted_weeks = sorted(weekly_data.items(), reverse=True)
             
-            # Resumo Geral
             col1, col2, col3 = st.columns(3)
             total_weeks = len(sorted_weeks)
             total_questoes_hist = sum([w[1]["questoes"] for w in sorted_weeks])
@@ -499,7 +725,6 @@ elif page == "📅 Cronograma":
             
             st.markdown("---")
             
-            # Exibe cada semana
             for week_key, week_info in sorted_weeks:
                 num_topicos = len(week_info["topicos"])
                 num_questoes = week_info["questoes"]
@@ -509,7 +734,6 @@ elif page == "📅 Cronograma":
                     f"📅 **Semana {week_key}** • {num_topicos} tópicos ativos",
                     expanded=False
                 ):
-                    # Tabela Otimizada
                     df_week = pd.DataFrame(week_info["topicos"])
                     
                     st.dataframe(
